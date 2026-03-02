@@ -1,0 +1,17 @@
+<CodeWalkerProject>
+  <Name>New CodeWalker Project</Name>
+  <Version value="1" />
+  <YmapFilenames>
+    <Item>meta\hane_v_villas1_3_milo_.ymap</Item>
+    <Item>meta\hane_v_villas1_3_2_milo_.ymap</Item>
+  </YmapFilenames>
+  <YtypFilenames>
+    <Item>meta\hane_v_villas1_3.ytyp</Item>
+  </YtypFilenames>
+  <YbnFilenames />
+  <YndFilenames />
+  <YnvFilenames />
+  <TrainsFilenames />
+  <ScenarioFilenames />
+  <AudioRelFilenames />
+</CodeWalkerProject>
