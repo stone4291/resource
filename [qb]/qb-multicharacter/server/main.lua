@@ -54,7 +54,8 @@ local function loadHouseData(src)
         end
     end
     TriggerClientEvent('qb-garages:client:houseGarageConfig', src, HouseGarages)
-    TriggerClientEvent('qb-houses:client:setHouseConfig', src, Houses)
+    -- Updated for ps-housing
+    TriggerClientEvent('ps-housing:client:setHouseConfig', src, Houses)
 end
 
 -- Commands
@@ -73,7 +74,7 @@ end)
 -- Events
 
 AddEventHandler('QBCore:Server:PlayerLoaded', function(Player)
-    Wait(1000) -- 1 second should be enough to do the preloading in other resources
+    Wait(1000)
     hasDonePreloading[Player.PlayerData.source] = true
 end)
 
@@ -95,17 +96,15 @@ RegisterNetEvent('qb-multicharacter:server:loadUserData', function(cData)
         print('^2[qb-core]^7 ' .. GetPlayerName(src) .. ' (Citizen ID: ' .. cData.citizenid .. ') has successfully loaded!')
         QBCore.Commands.Refresh(src)
         loadHouseData(src)
-        if Config.SkipSelection then
-            local coords = json.decode(cData.position)
-            TriggerClientEvent('qb-multicharacter:client:spawnLastLocation', src, coords, cData)
+
+        -- Updated ps-housing spawn UI integration
+        if GetResourceState('ps-housing') == 'started' then
+            TriggerClientEvent('ps-housing:client:setupSpawnUI', src, cData)
         else
-            if GetResourceState('qb-apartments') == 'started' then
-                TriggerClientEvent('apartments:client:setupSpawnUI', src, cData)
-            else
-                TriggerClientEvent('qb-spawn:client:setupSpawns', src, cData, false, nil)
-                TriggerClientEvent('qb-spawn:client:openUI', src, true)
-            end
+            TriggerClientEvent('qb-spawn:client:setupSpawns', src, cData, false, nil)
+            TriggerClientEvent('qb-spawn:client:openUI', src, true)
         end
+
         TriggerEvent('qb-log:server:CreateLog', 'joinleave', 'Loaded', 'green', '**' .. GetPlayerName(src) .. '** (<@' .. (QBCore.Functions.GetIdentifier(src, 'discord'):gsub('discord:', '') or 'unknown') .. '> |  ||' .. (QBCore.Functions.GetIdentifier(src, 'ip') or 'undefined') .. '|| | ' .. (QBCore.Functions.GetIdentifier(src, 'license') or 'undefined') .. ' | ' .. cData.citizenid .. ' | ' .. src .. ') loaded..')
     end
 end)
@@ -119,23 +118,11 @@ RegisterNetEvent('qb-multicharacter:server:createCharacter', function(data)
         repeat
             Wait(10)
         until hasDonePreloading[src]
-        if GetResourceState('qb-apartments') == 'started' and Apartments.Starting then
-            local randbucket = (GetPlayerPed(src) .. math.random(1, 999))
-            SetPlayerRoutingBucket(src, randbucket)
-            print('^2[qb-core]^7 ' .. GetPlayerName(src) .. ' has successfully loaded!')
-            QBCore.Commands.Refresh(src)
-            loadHouseData(src)
-            TriggerClientEvent('qb-multicharacter:client:closeNUI', src)
-            TriggerClientEvent('apartments:client:setupSpawnUI', src, newData)
-            GiveStarterItems(src)
-        else
-            print('^2[qb-core]^7 ' .. GetPlayerName(src) .. ' has successfully loaded!')
-            QBCore.Commands.Refresh(src)
-            loadHouseData(src)
-            TriggerClientEvent('qb-multicharacter:client:closeNUIdefault', src)
-            GiveStarterItems(src)
-            TriggerEvent('apartments:client:SetHomeBlip', nil)
-        end
+        print('^2[qb-core]^7 ' .. GetPlayerName(src) .. ' has successfully loaded!')
+        QBCore.Commands.Refresh(src)
+        loadHouseData(src)
+        TriggerClientEvent('qb-multicharacter:client:closeNUI', src)
+        GiveStarterItems(src)
     end
 end)
 
@@ -151,7 +138,6 @@ end)
 QBCore.Functions.CreateCallback('qb-multicharacter:server:GetUserCharacters', function(source, cb)
     local src = source
     local license = QBCore.Functions.GetIdentifier(src, 'license')
-
     MySQL.query('SELECT * FROM players WHERE license = ?', { license }, function(result)
         cb(result)
     end)
@@ -167,7 +153,6 @@ QBCore.Functions.CreateCallback('qb-multicharacter:server:GetNumberOfCharacters'
     local src = source
     local license = QBCore.Functions.GetIdentifier(src, 'license')
     local numOfChars = 0
-
     if next(Config.PlayersNumberOfCharacters) then
         for _, v in pairs(Config.PlayersNumberOfCharacters) do
             if v.license == license then
