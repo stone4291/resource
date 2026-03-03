@@ -70,14 +70,8 @@ end
 -- Callbacks
 
 QBCore.Functions.CreateCallback('qb-garages:server:getHouseGarage', function(_, cb, house)
-    local houseInfo = MySQL.single.await('SELECT * FROM properties WHERE property_id = ?', { house })
+    local houseInfo = MySQL.single.await('SELECT * FROM houselocations WHERE name = ?', { house })
     cb(houseInfo)
-end)
-RegisterNetEvent('qb-garages:client:removeHouseGarage', function(house)
-    local formattedHouseName = string.gsub(string.lower(house), ' ', '')
-    local zoneName = 'house_' .. formattedHouseName
-    RemoveHouseZone(zoneName)
-    Config.Garages[formattedHouseName] = nil
 end)
 
 QBCore.Functions.CreateCallback('qb-garages:server:GetGarageVehicles', function(source, cb, garage, type, category)
@@ -155,7 +149,7 @@ QBCore.Functions.CreateCallback('qb-garages:server:canDeposit', function(source,
         cb(false)
         return
     end
-    if type == 'house' and not exports['ps-housing']:IsOwner(source, garage) then
+    if type == 'house' and not exports['qb-houses']:hasKey(Player.PlayerData.license, Player.PlayerData.citizenid, Config.Garages[garage].houseName) then
         cb(false)
         return
     end

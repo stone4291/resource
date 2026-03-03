@@ -386,8 +386,5 @@ QBShared.Items = {
     -- Crafting table's
     item_bench = {name = "item_bench", label = "Workbench", weight = 15000, type = "item", image = "workbench.png", unique = true, useable = true, shouldClose = false, combinable = nil, description = "A workbench to craft items."},
     attachment_bench = {name = "attachment_bench", label = "Attachment Workbench", weight = 15000, type = "item", image = "attworkbench.png", unique = true, useable = true, shouldClose = false, combinable = nil, description = "A workbench for crafting attachments."},
-   
-    -- extras
-     item_bench = {name = "boombox", label = "boombox", weight = 10, type = "item", image = "boombox.png", unique = true, useable = true, shouldClose = false, combinable = nil, description = "now you are a dj "},
 
 }
