@@ -182,14 +182,20 @@ RegisterNetEvent('qb-doorlock:server:updateState', function(doorID, locked, src,
 	end)
 end)
 
-local function saveNewDoor(src, data, doubleDoor)
+RegisterNetEvent('qb-doorlock:server:saveNewDoor', function(data, doubleDoor)
+	local src = source
+	if not QBCore.Functions.HasPermission(src, Config.CommandPermission) and not IsPlayerAceAllowed(src, 'command') then
+		if Config.Warnings then
+			showWarning(Lang:t("general.warn_no_permission_newdoor", {player = GetPlayerName(src), license = QBCore.Functions.GetIdentifier(src, 'license'), source = src}))
+		end
+		return
+	end
 	local Player = QBCore.Functions.GetPlayer(src)
 	if not Player then return end
-
 	local configData = {}
-	local jobs, gangs, cids, items, doorType, identifier
-	if data.job then configData.authorizedJobs = { [data.job] = 0 } jobs = "['"..data.job.."'] = 0" end
-	if data.gang then configData.authorizedGangs = { [data.gang] = 0 } gangs = "['"..data.gang.."'] = 0" end
+	local jobs, jobGrade, gangs, gangGrade, cids, items, doorType, identifier
+	if data.job then jobGrade = tonumber(data.jobGrade) or 0 configData.authorizedJobs = { [data.job] = jobGrade } jobs = "['"..data.job.."'] = "..jobGrade end
+	if data.gang then gangGrade = tonumber(data.gangGrade) or 0 configData.authorizedGangs = { [data.gang] = gangGrade } gangs = "['"..data.gang.."'] = "..gangGrade end
 	if data.cid then configData.authorizedCitizenIDs = { [data.cid] = true } cids = "['"..data.cid.."'] = true" end
 	if data.item then configData.items = { [data.item] = 1 } items = "['"..data.item.."'] = 1" end
 	configData.locked = data.locked
@@ -201,7 +207,7 @@ local function saveNewDoor(src, data, doubleDoor)
 	configData.doorRate = 1.0
 	configData.doorLabel = data.doorlabel
 	doorType = "'"..data.doortype.."'"
-	identifier = data.id or data.configfile..'-'..data.dooridentifier
+	identifier = data.configfile..'-'..data.dooridentifier
 	if doubleDoor then
 		configData.doors = {
 			{objName = data.model[1], objYaw = data.heading[1], objCoords = data.coords[1]},
@@ -229,8 +235,7 @@ local function saveNewDoor(src, data, doubleDoor)
 	end
 
 	local file = io.open(path, 'a+')
-	if not file then return end
-	local label = ("\n\n-- %s %s %s\nConfig.DoorList['%s'] = {"):format(data.id or data.dooridentifier, Lang:t("general.created_by"), Player.PlayerData.name, identifier)
+	local label = "\n\n-- "..data.dooridentifier.." ".. Lang:t("general.created_by") .." "..Player.PlayerData.name.."\nConfig.DoorList['"..identifier.."'] = {"
 	file:write(label)
 	for k, v in pairs(configData) do
 		if k == 'authorizedJobs' or k == 'authorizedGangs' or k == 'authorizedCitizenIDs' or k == 'items' then
@@ -267,35 +272,8 @@ local function saveNewDoor(src, data, doubleDoor)
 
 	Config.DoorList[identifier] = configData
 	TriggerClientEvent('qb-doorlock:client:newDoorAdded', -1, configData, identifier, src)
-end
-
-exports('getDoor', function(id)
-	return Config.DoorList[id]
 end)
 
-exports('updateDoor', function(id, data)
-	local door = Config.DoorList[id]
-	if not door then return end
-
-	for k,v in pairs(data) do
-		door[k] = v
-	end
-
-	TriggerClientEvent('qb-doorlock:client:newDoorAdded', -1, door, id)
-end)
-
-exports('saveNewDoor', saveNewDoor)
-
-RegisterNetEvent('qb-doorlock:server:saveNewDoor', function(data, doubleDoor)
-	local src = source
-	if not QBCore.Functions.HasPermission(src, Config.CommandPermission) and not IsPlayerAceAllowed(src, 'command') then
-		if Config.Warnings then
-			showWarning(Lang:t("general.warn_no_permission_newdoor", {player = GetPlayerName(src), license = QBCore.Functions.GetIdentifier(src, 'license'), source = src}))
-		end
-		return
-	end
-	saveNewDoor(src, data, doubleDoor)
-end)
 AddEventHandler('onResourceStart', function(resource)
     if GetCurrentResourceName() == resource and Config.PersistentDoorStates then
 		CreateThread(function()

@@ -2,6 +2,7 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local OutsideVehicles = {}
 
 -- Handler
+
 AddEventHandler('onResourceStart', function(resource)
     if resource == GetCurrentResourceName() then
         Wait(100)
@@ -14,13 +15,31 @@ AddEventHandler('onResourceStart', function(resource)
 end)
 
 -- Functions
+
 local vehicleClasses = {
-    compacts = 0, sedans = 1, suvs = 2, coupes = 3, muscle = 4,
-    sportsclassics = 5, sports = 6, super = 7, motorcycles = 8,
-    offroad = 9, industrial = 10, utility = 11, vans = 12,
-    cycles = 13, boats = 14, helicopters = 15, planes = 16,
-    service = 17, emergency = 18, military = 19, commercial = 20,
-    trains = 21, openwheel = 22
+    compacts = 0,
+    sedans = 1,
+    suvs = 2,
+    coupes = 3,
+    muscle = 4,
+    sportsclassics = 5,
+    sports = 6,
+    super = 7,
+    motorcycles = 8,
+    offroad = 9,
+    industrial = 10,
+    utility = 11,
+    vans = 12,
+    cycles = 13,
+    boats = 14,
+    helicopters = 15,
+    planes = 16,
+    service = 17,
+    emergency = 18,
+    military = 19,
+    commercial = 20,
+    trains = 21,
+    openwheel = 22,
 }
 
 local function arrayToSet(array)
@@ -34,26 +53,31 @@ end
 local function filterVehiclesByCategory(vehicles, category)
     local filtered = {}
     local categorySet = arrayToSet(category)
+
     for _, vehicle in pairs(vehicles) do
         local vehicleData = QBCore.Shared.Vehicles[vehicle.vehicle]
         local vehicleCategoryString = vehicleData and vehicleData.category or 'compacts'
         local vehicleCategoryNumber = vehicleClasses[vehicleCategoryString]
+
         if vehicleCategoryNumber and categorySet[vehicleCategoryNumber] then
             filtered[#filtered + 1] = vehicle
         end
     end
+
     return filtered
 end
 
 -- Callbacks
+
 QBCore.Functions.CreateCallback('qb-garages:server:getHouseGarage', function(_, cb, house)
-    local houseInfo = MySQL.single.await('SELECT * FROM houselocations WHERE name = ?', { house })
-    if houseInfo and houseInfo.garage then
-        houseInfo.garage = houseInfo.garage ~= '' and json.decode(houseInfo.garage) or { takeVehicle = {}, storeVehicle = {} }
-    else
-        houseInfo = { garage = { takeVehicle = {}, storeVehicle = {} } }
-    end
+    local houseInfo = MySQL.single.await('SELECT * FROM properties WHERE property_id = ?', { house })
     cb(houseInfo)
+end)
+RegisterNetEvent('qb-garages:client:removeHouseGarage', function(house)
+    local formattedHouseName = string.gsub(string.lower(house), ' ', '')
+    local zoneName = 'house_' .. formattedHouseName
+    RemoveHouseZone(zoneName)
+    Config.Garages[formattedHouseName] = nil
 end)
 
 QBCore.Functions.CreateCallback('qb-garages:server:GetGarageVehicles', function(source, cb, garage, type, category)
@@ -62,6 +86,7 @@ QBCore.Functions.CreateCallback('qb-garages:server:GetGarageVehicles', function(
     local citizenId = Player.PlayerData.citizenid
 
     local vehicles
+
     if type == 'depot' then
         vehicles = MySQL.rawExecute.await('SELECT * FROM player_vehicles WHERE citizenid = ? AND depotprice > 0', { citizenId })
     elseif Config.SharedGarages then
@@ -69,26 +94,39 @@ QBCore.Functions.CreateCallback('qb-garages:server:GetGarageVehicles', function(
     else
         vehicles = MySQL.rawExecute.await('SELECT * FROM player_vehicles WHERE citizenid = ? AND garage = ?', { citizenId, garage })
     end
-
-    if #vehicles == 0 then cb(nil) return end
+    if #vehicles == 0 then
+        cb(nil)
+        return
+    end
     if Config.ClassSystem then
-        cb(filterVehiclesByCategory(vehicles, category))
+        local filteredVehicles = filterVehiclesByCategory(vehicles, category)
+        cb(filteredVehicles)
     else
         cb(vehicles)
     end
 end)
 
 -- Backwards Compat
-local vehicleTypes = { motorcycles = 'bike', boats = 'boat', helicopters = 'heli', planes = 'plane', submarines = 'submarine', trailer = 'trailer', train = 'train' }
+local vehicleTypes = { -- https://docs.fivem.net/natives/?_0xA273060E
+    motorcycles = 'bike',
+    boats = 'boat',
+    helicopters = 'heli',
+    planes = 'plane',
+    submarines = 'submarine',
+    trailer = 'trailer',
+    train = 'train'
+}
+
 local function GetVehicleTypeByModel(model)
     local vehicleData = QBCore.Shared.Vehicles[model]
     if not vehicleData then return 'automobile' end
     local category = vehicleData.category
-    return vehicleTypes[category] or 'automobile'
+    local vehicleType = vehicleTypes[category]
+    return vehicleType or 'automobile'
 end
 -- Backwards Compat
 
--- Vehicle spawn
+-- Spawns a vehicle and returns its network ID and properties.
 QBCore.Functions.CreateCallback('qb-garages:server:spawnvehicle', function(source, cb, plate, vehicle, coords)
     local vehType = QBCore.Shared.Vehicles[vehicle] and QBCore.Shared.Vehicles[vehicle].type or GetVehicleTypeByModel(vehicle)
     local veh = CreateVehicleServerSetter(GetHashKey(vehicle), vehType, coords.x, coords.y, coords.z, coords.w)
@@ -101,8 +139,8 @@ QBCore.Functions.CreateCallback('qb-garages:server:spawnvehicle', function(sourc
     cb(netId, vehProps, plate)
 end)
 
--- Check if can spawn
-QBCore.Functions.CreateCallback('qb-garages:server:IsSpawnOk', function(_, cb, plate)
+-- Checks if a vehicle can be spawned based on its type and location.
+QBCore.Functions.CreateCallback('qb-garages:server:IsSpawnOk', function(_, cb, plate, type)
     if OutsideVehicles[plate] and DoesEntityExist(OutsideVehicles[plate].entity) then
         cb(false)
         return
@@ -110,12 +148,14 @@ QBCore.Functions.CreateCallback('qb-garages:server:IsSpawnOk', function(_, cb, p
     cb(true)
 end)
 
--- Deposit vehicle
 QBCore.Functions.CreateCallback('qb-garages:server:canDeposit', function(source, cb, plate, type, garage, state)
     local Player = QBCore.Functions.GetPlayer(source)
     local isOwned = MySQL.scalar.await('SELECT citizenid FROM player_vehicles WHERE plate = ? LIMIT 1', { plate })
-    if isOwned ~= Player.PlayerData.citizenid then cb(false) return end
-    if type == 'house' and not exports['qb-houses']:hasKey(Player.PlayerData.license, Player.PlayerData.citizenid, Config.Garages[garage].houseName) then
+    if isOwned ~= Player.PlayerData.citizenid then
+        cb(false)
+        return
+    end
+    if type == 'house' and not exports['ps-housing']:IsOwner(source, garage) then
         cb(false)
         return
     end
@@ -128,6 +168,7 @@ QBCore.Functions.CreateCallback('qb-garages:server:canDeposit', function(source,
 end)
 
 -- Events
+
 RegisterNetEvent('qb-garages:server:updateVehicleStats', function(plate, fuel, engine, body)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
@@ -168,6 +209,7 @@ RegisterNetEvent('qb-garages:server:PayDepotPrice', function(data)
     MySQL.scalar('SELECT depotprice FROM player_vehicles WHERE plate = ?', { data.plate }, function(result)
         if result then
             local depotPrice = result
+
             if cashBalance >= depotPrice then
                 Player.Functions.RemoveMoney('cash', depotPrice, 'paid-depot')
                 TriggerClientEvent('qb-garages:client:takeOutGarage', src, data)
@@ -181,12 +223,14 @@ RegisterNetEvent('qb-garages:server:PayDepotPrice', function(data)
     end)
 end)
 
--- Sync house garages
+-- House Garages
+
 RegisterNetEvent('qb-garages:server:syncGarage', function(updatedGarages)
     Config.Garages = updatedGarages
 end)
 
--- Phone callback for all vehicles
+--Call from qb-phone
+
 QBCore.Functions.CreateCallback('qb-garages:server:GetPlayerVehicles', function(source, cb)
     local Player = QBCore.Functions.GetPlayer(source)
     local Vehicles = {}
@@ -195,6 +239,7 @@ QBCore.Functions.CreateCallback('qb-garages:server:GetPlayerVehicles', function(
         if result[1] then
             for _, v in pairs(result) do
                 local VehicleData = QBCore.Shared.Vehicles[v.vehicle]
+
                 local VehicleGarage = Lang:t('error.no_garage')
                 if v.garage ~= nil then
                     if Config.Garages[v.garage] ~= nil then
@@ -205,9 +250,12 @@ QBCore.Functions.CreateCallback('qb-garages:server:GetPlayerVehicles', function(
                 end
 
                 local stateTranslation
-                if v.state == 0 then stateTranslation = Lang:t('status.out')
-                elseif v.state == 1 then stateTranslation = Lang:t('status.garaged')
-                elseif v.state == 2 then stateTranslation = Lang:t('status.impound')
+                if v.state == 0 then
+                    stateTranslation = Lang:t('status.out')
+                elseif v.state == 1 then
+                    stateTranslation = Lang:t('status.garaged')
+                elseif v.state == 2 then
+                    stateTranslation = Lang:t('status.impound')
                 end
 
                 local fullname
