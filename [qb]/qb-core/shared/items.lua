@@ -386,5 +386,13 @@ QBShared.Items = {
     -- Crafting table's
     item_bench = {name = "item_bench", label = "Workbench", weight = 15000, type = "item", image = "workbench.png", unique = true, useable = true, shouldClose = false, combinable = nil, description = "A workbench to craft items."},
     attachment_bench = {name = "attachment_bench", label = "Attachment Workbench", weight = 15000, type = "item", image = "attworkbench.png", unique = true, useable = true, shouldClose = false, combinable = nil, description = "A workbench for crafting attachments."},
+   ---- other 
+item_outfit_bag                 = {name = "outfit_bag", label = "Outfit Bag", weight = 1000, type = "item", image = "bag.png", unique = false, useable = true, shouldClose = true, combinable = nil, description = "Use this to change or apply a saved outfit."},
+boombox                         = {name = "boombox", label = "boombox", weight = 10, type = "item", image = "boombox.png", unique = false, useable = true, shouldClose = true,  description = "is it a party"},
+
+-- JIM-RECYLE --
+    recyclablematerial  = { name = "recyclablematerial",   label = "Recycle Box",      weight = 100, type = "item", 		image = "recyclablematerial.png",   unique = false, 	useable = false, 	shouldClose = false, combinable = nil,   description = "A box of Recyclable Materials"},
+    bottle              = { name = "bottle",               label = "Empty Bottle",     weight = 10,  type = "item", 		image = "bottle.png",               unique = false, 	useable = false, 	shouldClose = false, combinable = nil,   description = "A glass bottle"},
+    can                 = { name = "can",                  label = "Empty Can",        weight = 10,  type = "item", 		image = "can.png",                  unique = false, 	useable = false, 	shouldClose = false, combinable = nil,   description = "An empty can, good for recycling"},
 
 }
